@@ -8,8 +8,14 @@ import { useAuth } from "../../hooks/useAuth";
 import type { House, NavigateProps, LeafletInstance } from "../../lib/types";
 import "./Dashboard.css";
 
-const FALLBACK_MAP_CENTER: [number, number] = [14.599, 120.985];
-const MAP_ZOOM = 15;
+// Define the boundaries of your specific area (Southwest, Northeast)
+const MAP_BOUNDS: [[number, number], [number, number]] = [
+  [14.168288025639274, 121.2378119084683], // Southwest coordinates
+  [14.173738857174708, 121.24183522173293] // Northeast coordinates
+];
+
+const FALLBACK_MAP_CENTER: [number, number] = [14.171013, 121.239823]; // Center of the new bounds
+const MAP_ZOOM = 16;
 
 const Dashboard: React.FC<NavigateProps> = ({ navigate }) =>{
   const [houses, setHouses] = useState<House[]>([]);
@@ -41,7 +47,7 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) =>{
 
   // Inside src/screens/Dashboard/Dashboard.tsx
 
-  /** build the Leaflet map and plot all house markers. */
+  // build the Leaflet map and plot all house markers.
   const initMap = useCallback((L: LeafletInstance): void =>{
     if (!mapContainerRef.current) return;
 
@@ -50,6 +56,11 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) =>{
         center: FALLBACK_MAP_CENTER, // Start with fallback
         zoom: MAP_ZOOM,
         zoomControl: true,
+        maxBounds: MAP_BOUNDS, // Locks the panning to this specific area
+        maxBoundsViscosity: 1.0, // Makes the bounds completely solid
+        minZoom: 16, // Prevents zooming out past the bounding box
+        inertia: false, // Prevents the kinetic snap-back effect when dragged
+        bounceAtZoomLimits: false, // Disables bouncing at zoom boundaries
       });
 
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -58,7 +69,7 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) =>{
 
       mapInstanceRef.current = map;
 
-      // 📍 Access user location, center the map, and add a location marker
+      // Access user location, center the map, and add a location marker
       if (navigator.geolocation){
         navigator.geolocation.getCurrentPosition(
           (position) =>{
@@ -218,7 +229,6 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) =>{
           <div className="dash__map-wrap">
             {houses.length === 0 && (
                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 900, color: 'rgba(255,255,255,0.5)', fontFamily: 'var(--ff-body)' }}>
-                 Walang data na makita.
                </div>
             )}
             {/* Leaflet mount target */}
