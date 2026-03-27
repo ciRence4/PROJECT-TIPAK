@@ -21,7 +21,7 @@ const getRiskNormalized = (h: any)=>{
 const getRiskColor = (normalizedRisk: string)=>{
   if(normalizedRisk === "MATAAS" || normalizedRisk === "HIGH") return "#ef4444"; /*Red*/
   if(normalizedRisk === "KATAMTAMAN" || normalizedRisk === "MODERATE") return "#eab308"; /*Yellow*/
-  if(normalizedRisk === "MABABA" || normalizedRisk === "LOW" || normalizedRisk === "MATAMTAMAN") return "#22c55e"; /*Green*/
+  if(normalizedRisk === "MABABA" || normalizedRisk === "LOW") return "#22c55e"; /*Green*/
   return "#64748b"; /*Gray fallback for unknown risks*/
 };
 
