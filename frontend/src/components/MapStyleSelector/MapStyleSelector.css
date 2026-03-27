@@ -1,0 +1,44 @@
+.map-selector {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(18, 33, 47, 0.88);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  padding: 6px;
+  box-shadow: var(--sh-elevated);
+  width: fit-content;
+  flex-shrink: 0;
+}
+
+.map-selector__btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: transparent;
+  border: none;
+  border-radius: var(--r-sm);
+  color: rgba(240, 225, 209, 0.45);
+  font-family: var(--ff-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.map-selector__btn:hover {
+  color: rgba(240, 225, 209, 0.9);
+  background: rgba(240, 225, 209, 0.05);
+}
+
+.map-selector__btn--active {
+  background: rgba(233, 178, 110, 0.15);
+  color: var(--c-amber);
+}
+
+.map-selector__btn--active:hover {
+  background: rgba(233, 178, 110, 0.25);
+  color: var(--c-amber);
+}

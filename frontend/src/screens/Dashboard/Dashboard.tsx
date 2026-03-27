@@ -2,6 +2,8 @@ import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Home, LogOut, MessageSquare, Loader2 } from "lucide-react";
 import StatCard from "../../components/StatCard/StatCard";
 import DetailPanel from "../../components/DetailPanel/DetailPanel";
+import MapStyleSelector from "../../components/MapStyleSelector/MapStyleSelector";
+import type { MapStyle } from "../../components/MapStyleSelector/MapStyleSelector";
 import { useLeaflet } from "../../hooks/useLeaflet";
 import { api } from "../../lib/api";
 import { useAuth } from "../../hooks/useAuth";
@@ -16,15 +18,25 @@ const MAP_BOUNDS: [[number, number], [number, number]] = [
 const FALLBACK_MAP_CENTER: [number, number] = [14.171013, 121.239823];
 const MAP_ZOOM = 16;
 
+// Map Tile Providers
+const TILE_URLS: Record<MapStyle, string> = {
+  satellite: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+  street: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+};
+
 const Dashboard: React.FC<NavigateProps> = ({ navigate }) => {
   const [houses, setHouses] = useState<House[]>([]);
   const [selectedHouse, setSelectedHouse] = useState<House | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [mapStyle, setMapStyle] = useState<MapStyle>("satellite");
   
   const { logout } = useAuth();
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef  = useRef<LeafletInstance | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tileLayerRef = useRef<any>(null);
 
   useEffect(() => {
     const loadHouses = async () => {
@@ -53,7 +65,7 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) => {
     const map = L.map(mapContainerRef.current, {
       center: FALLBACK_MAP_CENTER, 
       zoom: MAP_ZOOM,
-      zoomControl: true,
+      zoomControl: false, // Disabled default to reposition it
       maxBounds: MAP_BOUNDS, 
       maxBoundsViscosity: 1.0, 
       minZoom: 16, 
@@ -61,11 +73,15 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) => {
       bounceAtZoomLimits: false, 
     });
 
-    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+    // Reposition zoom controls to bottom left so it doesn't conflict with right panel
+    L.control.zoom({ position: 'bottomleft' }).addTo(map);
+
+    const tileLayer = L.tileLayer(TILE_URLS.satellite, {
       maxZoom: 19,
-      attribution: "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
+      attribution: "Map data &copy; contributors"
     }).addTo(map);
 
+    tileLayerRef.current = tileLayer;
     mapInstanceRef.current = map;
 
     if (navigator.geolocation) {
@@ -105,6 +121,14 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) => {
 
   useLeaflet(initMap);
 
+  // Update map tiles instantly when user switches style
+  useEffect(() => {
+    if (tileLayerRef.current) {
+      tileLayerRef.current.setUrl(TILE_URLS[mapStyle]);
+    }
+  }, [mapStyle]);
+
+  // Plot houses
   useEffect(() => {
     const map = mapInstanceRef.current;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -152,6 +176,8 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) => {
 
       marker.on("click", () => {
         setSelectedHouse(house);
+        // Offset pan slightly to left so marker isn't covered by the right panel
+        map.panBy([-150, 0], { animate: true, duration: 0.5 });
         map.panTo([house.lat, house.lng], { animate: true, duration: 0.5 });
       });
     });
@@ -174,82 +200,76 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) => {
 
   return (
     <div className="dash">
-      <div className="dash__main">
-        <div className="dash__topbar">
-          <div>
-            <div className="dash__topbar-title">Barangay Risk Map</div>
-            <div className="dash__topbar-meta">
-              {currentDate} &bull; {isLoading ? "Waking up server..." : (totalSubmissions === 0 ? "Walang data sa database" : `${totalSubmissions} properties plotted`)}
+      {/* ─── Map Background ─── */}
+      <div className="dash__map-wrap">
+        {isLoading && (
+            <div className="dash__loading-overlay">
+              <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
+              <span>Waking up server, please wait...</span>
+            </div>
+        )}
+        <div
+          id="tipak-map"
+          ref={mapContainerRef}
+          aria-label="Risk map ng Barangay"
+        />
+      </div>
+
+      {/* ─── Floating UI Overlays ─── */}
+      <div className="dash__ui-layer">
+        
+        {/* Left Flank: Controls & Stats */}
+        <div className="dash__left-flank">
+          <div className="dash__control-panel">
+            <div className="dash__header-info">
+              <div className="dash__topbar-title">Barangay Risk Map</div>
+              <div className="dash__topbar-meta">
+                {currentDate} &bull; {isLoading ? "Syncing data..." : (totalSubmissions === 0 ? "Walang data sa database" : `${totalSubmissions} properties plotted`)}
+              </div>
+            </div>
+
+            <div className="dash__actions">
+              <button className="dash__btn-action" onClick={() => navigate("/")}>
+                <Home size={14} /> Portal
+              </button>
+              <button className="dash__btn-action dash__btn-action--primary" onClick={() =>{}}>
+                <MessageSquare size={14} /> SMS
+              </button>
+              <button className="dash__btn-action dash__btn-action--danger" onClick={handleLogout}>
+                <LogOut size={14} /> Logout
+              </button>
             </div>
           </div>
 
-          <div className="dash__topbar-actions">
-            <button
-              className="dash__topbar-btn"
-              onClick={() => navigate("/")}
-            >
-              <Home size={13} strokeWidth={2} />
-              <span>Resident Portal</span>
-            </button>
-            <button 
-              className="dash__topbar-btn dash__topbar-btn--primary"
-              onClick={() =>{}}
-            >
-              <MessageSquare size={13} strokeWidth={2.2} />
-              <span>SMS Alert</span>
-            </button>
-            <button 
-              className="dash__topbar-btn dash__topbar-btn--primary"
-              onClick={handleLogout}
-            >
-              <LogOut size={13} strokeWidth={2.2} />
-              <span>Logout</span>
-            </button>
-          </div>
-        </div>
+          <MapStyleSelector 
+            currentStyle={mapStyle} 
+            onStyleChange={setMapStyle} 
+          />
 
-        <div className="dash__stats">
-          <StatCard
-            value={lowRiskCount}
-            label="Low Risk (Mababa)"
-            subtext={lowRiskCount === 0 ? "Walang low risk" : "Ligtas sa ngayon"}
-            variant="total"
-          />
-          <StatCard
-            value={highRiskCount}
-            label="High Risk (Mataas)"
-            subtext={highRiskCount === 0 ? "Walang high risk" : "Nangangailangan ng aksyon"}
-            variant="high"
-          />
-          <StatCard
-            value={moderateRiskCount}
-            label="Moderate Risk (Katamtaman)"
-            subtext={moderateRiskCount === 0 ? "Walang moderate risk" : "Kailangang bantayan"}
-            variant="pending" 
-          />
-        </div>
-
-        <div className="dash__content">
-          <div className="dash__map-wrap">
-            {isLoading && (
-               <div style={{ 
-                 position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', 
-                 zIndex: 900, color: 'var(--c-cream)', fontFamily: 'var(--ff-body)', 
-                 background: 'rgba(14, 26, 39, 0.85)', padding: '12px 20px', 
-                 borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '10px',
-                 boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-               }}>
-                 <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
-                 <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>Waking up server, please wait...</span>
-               </div>
-            )}
-            <div
-              id="tipak-map"
-              ref={mapContainerRef}
-              aria-label="Risk map ng Barangay"
+          <div className="dash__stats-column">
+            <StatCard
+              value={lowRiskCount}
+              label="Low Risk (Mababa)"
+              subtext={lowRiskCount === 0 ? "Walang low risk" : "Ligtas sa ngayon"}
+              variant="total"
+            />
+            <StatCard
+              value={highRiskCount}
+              label="High Risk (Mataas)"
+              subtext={highRiskCount === 0 ? "Walang high risk" : "Nangangailangan ng aksyon"}
+              variant="high"
+            />
+            <StatCard
+              value={moderateRiskCount}
+              label="Moderate Risk (Katamtaman)"
+              subtext={moderateRiskCount === 0 ? "Walang moderate risk" : "Kailangang bantayan"}
+              variant="pending" 
             />
           </div>
+        </div>
 
+        {/* Right Flank: Detail Panel */}
+        <div className="dash__right-flank">
           {selectedHouse && (
             <DetailPanel
               house={selectedHouse}
@@ -257,6 +277,7 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) => {
             />
           )}
         </div>
+        
       </div>
     </div>
   );
