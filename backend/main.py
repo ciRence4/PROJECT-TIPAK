@@ -150,7 +150,7 @@ Cracks: {len(roboflow_results['detections']['cracks'])},
 Old Wood: {len(roboflow_results['detections']['old wood'])}
 
 Format strictly as follows:
-PART 1 — MATERIAL DETECTION (English):
+PART 1 — MATERIAL DETECTION (Filipino):
 ROOFING:
 WALLS:
 FOUNDATION:
