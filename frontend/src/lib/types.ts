@@ -6,7 +6,7 @@ export interface House {
   id: number;
   lat: number;
   lng: number;
-  risk: RiskLevel;
+  risk_level: string;
   color: string;
   owner: string;
   address: string;

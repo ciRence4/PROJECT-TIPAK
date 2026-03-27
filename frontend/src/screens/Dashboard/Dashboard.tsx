@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import { Home, LogOut } from "lucide-react";
+import { Home, LogOut, MessageSquare } from "lucide-react";
 import StatCard from "../../components/StatCard/StatCard";
 import DetailPanel from "../../components/DetailPanel/DetailPanel";
 import { useLeaflet } from "../../hooks/useLeaflet";
@@ -11,7 +11,21 @@ import "./Dashboard.css";
 const FALLBACK_MAP_CENTER: [number, number] = [14.599, 120.985];
 const MAP_ZOOM = 15;
 
-const Dashboard: React.FC<NavigateProps> = ({ navigate }) => {
+/*Helper to safely read the risk level from DB, handling both 'risk' and 'risk_level'*/
+const getRiskNormalized = (h: any)=>{
+  const r = h.risk_level || h.risk || "";
+  return r.trim().toUpperCase();
+};
+
+/*Helper to assign colors based on the normalized risk level*/
+const getRiskColor = (normalizedRisk: string)=>{
+  if(normalizedRisk === "MATAAS" || normalizedRisk === "HIGH") return "#ef4444"; /*Red*/
+  if(normalizedRisk === "KATAMTAMAN" || normalizedRisk === "MODERATE") return "#eab308"; /*Yellow*/
+  if(normalizedRisk === "MABABA" || normalizedRisk === "LOW" || normalizedRisk === "MATAMTAMAN") return "#22c55e"; /*Green*/
+  return "#64748b"; /*Gray fallback for unknown risks*/
+};
+
+const Dashboard: React.FC<NavigateProps> = ({ navigate })=>{
   const [houses, setHouses] = useState<House[]>([]);
   const [selectedHouse, setSelectedHouse] = useState<House | null>(null);
   
@@ -20,13 +34,13 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef  = useRef<LeafletInstance | null>(null);
 
-  // Fetch real data from the backend database on mount
-  useEffect(() => {
-    const loadHouses = async () => {
-      try {
+  /*Fetch real data from the backend database on mount*/
+  useEffect(()=>{
+    const loadHouses = async ()=>{
+      try{
         const data = await api.getHouses();
         setHouses(data || []);
-      } catch (err) {
+      }catch(err){
         console.error("Failed to fetch dashboard data:", err);
         setHouses([]); 
       }
@@ -34,20 +48,18 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) => {
     loadHouses();
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = ()=>{
     logout();
     navigate("/");
   };
 
-  // Inside src/screens/Dashboard/Dashboard.tsx
+  /*build the Leaflet map and plot all house markers.*/
+  const initMap = useCallback((L: LeafletInstance): void =>{
+    if(!mapContainerRef.current) return;
 
-  /** build the Leaflet map and plot all house markers. */
-  const initMap = useCallback((L: LeafletInstance): void => {
-    if (!mapContainerRef.current) return;
-
-    if (!mapInstanceRef.current) {
+    if(!mapInstanceRef.current){
       const map = L.map(mapContainerRef.current, {
-        center: FALLBACK_MAP_CENTER, // Start with fallback
+        center: FALLBACK_MAP_CENTER, /*Start with fallback*/
         zoom: MAP_ZOOM,
         zoomControl: true,
       });
@@ -58,22 +70,22 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) => {
 
       mapInstanceRef.current = map;
 
-      // 📍 Access user location, center the map, and add a location marker
-      if (navigator.geolocation) {
+      /*📍 Access user location, center the map, and add a location marker*/
+      if(navigator.geolocation){
         navigator.geolocation.getCurrentPosition(
-          (position) => {
+          (position)=>{
             const { latitude, longitude } = position.coords;
             map.setView([latitude, longitude], MAP_ZOOM);
 
-            // Outer semi-transparent blue pulse
+            /*Outer semi-transparent blue pulse*/
             L.circleMarker([latitude, longitude], {
               radius: 18,
-              fillColor: "#3b82f6", // Blue
+              fillColor: "#3b82f6", /*Blue*/
               color: "transparent",
               fillOpacity: 0.2,
             }).addTo(map);
 
-            // Inner solid blue dot for precise location
+            /*Inner solid blue dot for precise location*/
             L.circleMarker([latitude, longitude], {
               radius: 7,
               fillColor: "#3b82f6",
@@ -90,7 +102,7 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) => {
               { direction: "top", offset: [0, -8] }
             );
           },
-          (err) => console.warn("Hindi makuha ang lokasyon ng dashboard:", err.message),
+          (err)=>console.warn("Hindi makuha ang lokasyon ng dashboard:", err.message),
           { enableHighAccuracy: true, timeout: 30000, maximumAge: 10000 }
         );
       }
@@ -98,38 +110,48 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) => {
 
     const map = mapInstanceRef.current;
     
-    if (houses.length === 0) return;
+    if(houses.length === 0) return;
 
-    houses.forEach((house) => {
+    houses.forEach((house)=>{
+      /*Ensure we have valid coordinates before plotting*/
+      if(!house.lat || !house.lng) return;
+
+      const normalizedRisk = getRiskNormalized(house);
+      const pinColor = getRiskColor(normalizedRisk);
+      const displayRisk = house.risk_level || "Unknown";
+
+      /*Outer glow circle*/
       L.circleMarker([house.lat, house.lng], {
         radius: 20,
-        fillColor: house.color,
-        color: house.color,
+        fillColor: pinColor,
+        color: pinColor,
         weight: 1.5,
         opacity: 0.28,
         fillOpacity: 0.08,
       }).addTo(map);
 
+      /*Inner solid pin*/
       const marker = L.circleMarker([house.lat, house.lng], {
         radius: 30,
-        fillColor: house.color,
+        fillColor: pinColor,
         color: "rgba(14,26,39,0.70)",
         weight: 2.5,
         opacity: 1,
         fillOpacity: 0.88,
       }).addTo(map);
 
+      /*Tooltip showing DB data*/
       marker.bindTooltip(
         `<strong style="font-family:Sora,sans-serif;font-size:0.78rem;color:#0e1a27">
-           ${house.risk} Risk
+           ${displayRisk} Risk
          </strong><br>
          <span style="font-size:0.68rem;color:#26436c">
-           ${house.owner}
+           ${house.owner || "Unknown Owner"}
          </span>`,
         { direction: "top", offset: [0, -14] },
       );
 
-      marker.on("click", () => {
+      marker.on("click", ()=>{
         setSelectedHouse(house);
         map.panTo([house.lat, house.lng], { animate: true, duration: 0.5 });
       });
@@ -138,25 +160,39 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) => {
 
   useLeaflet(initMap);
 
-  useEffect(() => {
-    return () => {
-      if (mapInstanceRef.current) {
+  useEffect(()=>{
+    return ()=>{
+      if(mapInstanceRef.current){
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
     };
   }, []);
 
-  // --- Dynamic calculations based purely on backend database ---
+  /*--- Dynamic calculations based purely on backend database ---*/
   const totalSubmissions = houses.length;
-  const highRiskCount = houses.filter(h => h.risk === "MATAAS" || h.risk === "High").length;
-  const moderateRiskCount = houses.filter(h => h.risk === "KATAMTAMAN" || h.risk === "Moderate").length;
+  
+  const highRiskCount = houses.filter(h => {
+    const r = getRiskNormalized(h);
+    return r === "MATAAS" || r === "HIGH";
+  }).length;
+
+  const moderateRiskCount = houses.filter(h => {
+    const r = getRiskNormalized(h);
+    return r === "KATAMTAMAN" || r === "MODERATE";
+  }).length;
+
+  const lowRiskCount = houses.filter(h => {
+    const r = getRiskNormalized(h);
+    return r === "MABABA" || r === "LOW" || r === "MATAMTAMAN";
+  }).length;
+
   const currentDate = new Date().toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
 
   return (
     <div className="dash">
       <div className="dash__main">
-        {/* Topbar */}
+        {/*Topbar*/}
         <div className="dash__topbar">
           <div>
             <div className="dash__topbar-title">Barangay Risk Map</div>
@@ -168,11 +204,21 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) => {
           <div className="dash__topbar-actions">
             <button
               className="dash__topbar-btn"
-              onClick={() => navigate("/")}
+              onClick={()=>navigate("/")}
             >
               <Home size={13} strokeWidth={2} />
               <span>Resident Portal</span>
             </button>
+            
+            {/*Mock SMS Button*/}
+            <button 
+              className="dash__topbar-btn dash__topbar-btn--primary"
+              onClick={()=>{/* Mock Action */}}
+            >
+              <MessageSquare size={13} strokeWidth={2.2} />
+              <span>SMS</span>
+            </button>
+
             <button 
               className="dash__topbar-btn dash__topbar-btn--primary"
               onClick={handleLogout}
@@ -183,12 +229,12 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) => {
           </div>
         </div>
 
-        {/* ── Stat cards driven by backend data ── */}
+        {/*── Stat cards driven by backend data ──*/}
         <div className="dash__stats">
           <StatCard
-            value={totalSubmissions}
-            label="Total Submissions"
-            subtext={totalSubmissions === 0 ? "Walang naitala" : "Galing sa database"}
+            value={lowRiskCount}
+            label="Low Risk (Mababa/Matamtaman)"
+            subtext={lowRiskCount === 0 ? "Walang low risk" : "Galing sa database"}
             variant="total"
           />
           <StatCard
@@ -205,7 +251,7 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) => {
           />
         </div>
 
-        {/* Map + detail panel */}
+        {/*Map + detail panel*/}
         <div className="dash__content">
           <div className="dash__map-wrap">
             {houses.length === 0 && (
@@ -213,7 +259,7 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) => {
                  Walang data na makita.
                </div>
             )}
-            {/* Leaflet mount target */}
+            {/*Leaflet mount target*/}
             <div
               id="tipak-map"
               ref={mapContainerRef}
@@ -221,11 +267,11 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) => {
             />
           </div>
 
-          {/* Slide-in detail panel */}
+          {/*Slide-in detail panel*/}
           {selectedHouse && (
             <DetailPanel
               house={selectedHouse}
-              onClose={() => setSelectedHouse(null)}
+              onClose={()=>setSelectedHouse(null)}
             />
           )}
         </div>
