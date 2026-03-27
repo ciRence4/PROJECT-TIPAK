@@ -1,3 +1,4 @@
+// src/App.tsx
 import React from "react";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
@@ -9,24 +10,23 @@ import "leaflet/dist/leaflet.css";
 
 // ─── Route Guards ────────────────────────────────────────────────────────────
 
-// Forces unauthenticated users to the /auth screen
+// Forces unauthenticated users or non-captains away from the dashboard
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, userRole } = useAuth();
   
-  if (!isAuthenticated) {
+  if (!isAuthenticated || userRole !== "captain") {
     return <Navigate to="/auth" replace />;
   }
   
   return <>{children}</>;
 };
 
-// Forces authenticated users away from public routes to their role's home screen
+// Forces authenticated captains away from public login to their home screen
 const AuthRedirect: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, userRole } = useAuth();
   
-  if (isAuthenticated) {
-    const home = userRole === "captain" ? "/dashboard" : "/submission";
-    return <Navigate to={home} replace />;
+  if (isAuthenticated && userRole === "captain") {
+    return <Navigate to="/dashboard" replace />;
   }
   
   return <>{children}</>;
@@ -35,13 +35,11 @@ const AuthRedirect: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 // ─── Router Setup ────────────────────────────────────────────────────────────
 
 const AppRoutes: React.FC = () => {
-  // We grab navigate from react-router to pass down, keeping compatibility 
-  // with your existing screen components that expect the `Maps` prop.
   const navigate = useNavigate();
 
   return (
     <Routes>
-      {/* Public / Auth Path */}
+      {/* Public Captain Auth Path */}
       <Route 
         path="/auth" 
         element={
@@ -51,35 +49,24 @@ const AppRoutes: React.FC = () => {
         } 
       />
 
-      {/* Root Path - Redirects to Auth if not logged in, or home if logged in */}
+      {/* Root Path - Redirects to Submission as the default public landing */}
       <Route 
         path="/" 
-        element={
-          <AuthRedirect>
-            <Navigate to="/auth" replace />
-          </AuthRedirect>
-        } 
+        element={<Navigate to="/submission" replace />} 
       />
 
-      {/* Protected Paths */}
+      {/* Public Paths for Residents */}
       <Route 
         path="/submission" 
-        element={
-          <ProtectedRoute>
-            <SubmissionScreen navigate={navigate} />
-          </ProtectedRoute>
-        } 
+        element={<SubmissionScreen navigate={navigate} />} 
       />
       
       <Route 
         path="/result" 
-        element={
-          <ProtectedRoute>
-            <ResultScreen navigate={navigate} />
-          </ProtectedRoute>
-        } 
+        element={<ResultScreen navigate={navigate} />} 
       />
       
+      {/* Protected Captain Path */}
       <Route 
         path="/dashboard" 
         element={

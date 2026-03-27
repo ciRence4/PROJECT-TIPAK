@@ -35,6 +35,7 @@ export interface AnalysisResult {
   cracks_detected: Detection[];
   old_wood_detected: Detection[];
   image_url: string;
+  id: string;
 }
 
 // Ensure these match your existing prop types

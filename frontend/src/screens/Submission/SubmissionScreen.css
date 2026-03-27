@@ -394,3 +394,76 @@
 .sub__viewfinder-icon--warn {
   color: rgba(239, 68, 68, 0.45);
 }
+
+
+/* ─── Additions for Resident Form & Captain Nav ──────────────── */
+
+.sub__captain-login-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(38, 67, 108, 0.08);
+  border: 1px solid rgba(38, 67, 108, 0.15);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-family: var(--ff-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--c-navy);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sub__captain-login-btn:hover {
+  background: var(--c-navy);
+  color: var(--c-cream);
+  border-color: var(--c-navy);
+}
+
+.sub__resident-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+  background: #ffffff;
+  padding: 16px;
+  border-radius: var(--r-md);
+  box-shadow: 0 2px 12px rgba(14, 26, 39, 0.04);
+  border: 1px solid rgba(14, 26, 39, 0.06);
+}
+
+.sub__input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sub__input-group label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--c-dark);
+  opacity: 0.8;
+}
+
+.sub__input-group input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--c-border);
+  background: #fafafa;
+  font-family: var(--ff-body);
+  font-size: 0.9rem;
+  color: var(--c-dark);
+  transition: all 0.2s;
+  outline: none;
+}
+
+.sub__input-group input:focus {
+  border-color: var(--c-navy);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(74, 124, 89, 0.1);
+}
+
+.sub__input-group input::placeholder {
+  color: #a0aec0;
+}

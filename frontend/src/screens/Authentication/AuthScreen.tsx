@@ -1,31 +1,25 @@
+// src/screens/Authentication/AuthScreen.tsx
 import React, { useState } from "react";
 import { 
   Mail, Lock, Loader2, ArrowRight, 
-  AlertCircle, Eye, EyeOff 
+  AlertCircle, Eye, EyeOff
 } from "lucide-react";
 import type { NavigateProps } from "../../lib/types";
 import { useAuth } from "../../hooks/useAuth";
-// IMPORT YOUR LOGO PROPERLY (Adjust path as needed)
-// import tipakLogo from "../../assets/tipak.png"; 
 import "./AuthScreen.css";
-type Mode = "login" | "register";
-type Role = "resident" | "captain";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const AuthScreen: React.FC<NavigateProps> = ({ navigate: _navigate }) => {
+type Mode = "login" | "register";
+
+const AuthScreen: React.FC<NavigateProps> = ({ navigate }) => {
   const { login, register, authError, clearError } = useAuth();
 
-  // Core state
   const [mode, setMode] = useState<Mode>("login");
   const [isLoading, setIsLoading] = useState(false);
   
-  // Form state
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [userType, setUserType] = useState<Role>("resident");
   
-  // UX state
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -44,11 +38,11 @@ const AuthScreen: React.FC<NavigateProps> = ({ navigate: _navigate }) => {
       if (!confirmPassword) errors.confirmPassword = "Pakikumpirma ang iyong password.";
       else if (password !== confirmPassword) errors.confirmPassword = "Hindi tugma ang mga password.";
     }
-    
 
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };
+
 
   const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
@@ -61,9 +55,11 @@ const AuthScreen: React.FC<NavigateProps> = ({ navigate: _navigate }) => {
       if (mode === "login") {
         await login(email, password);
       } else {
-        await register(email, password, userType);
+        await register(email, password, "captain"); 
       }
-      // Note: Auth state change automatically redirects via App.tsx ProtectedRoutes!
+      
+      navigate("/dashboard");
+      
     } catch (err) {
       console.error("Authentication failed", err);
     } finally {
@@ -87,13 +83,11 @@ const AuthScreen: React.FC<NavigateProps> = ({ navigate: _navigate }) => {
 
   return (
     <div className="auth">
-      {/* Background Decor */}
       <div className="auth__bg-orb auth__bg-orb--1" aria-hidden="true" />
       <div className="auth__bg-orb auth__bg-orb--2" aria-hidden="true" />
 
       <header className="auth__header">
-        <div className="auth__logo">
-          {/* Use the imported logo here instead of a hardcoded string */}
+        <div className="auth__logo" onClick={() => navigate("/")} style={{ cursor: "pointer" }}>
           <img src="/src/assets/tipak.png" alt="Project Tipak Logo" className="auth__logo-img" />
           <div className="auth__logo-text">Project Tipak</div>
         </div>
@@ -102,16 +96,15 @@ const AuthScreen: React.FC<NavigateProps> = ({ navigate: _navigate }) => {
       <main className="auth__body">
         <div className="auth__text-content">
           <h1 className="auth__headline">
-            {mode === "login" ? "Mag-sign in" : "Gumawa ng account"}
+            Captain Portal
           </h1>
           <p className="auth__subtext">
             {mode === "login"
-              ? "Ipagpatuloy ang pag-assess ng iyong tahanan para sa kaligtasan."
-              : "Sumali sa Project TIPAK para sa libreng AI structural assessment."}
+              ? "Mag-sign in upang pamahalaan ang mga ulat ng inyong barangay."
+              : "Mag-rehistro ng bagong Captain account."}
           </p>
         </div>
 
-        {/* Global Error Banner */}
         {authError && (
           <div className="auth__error-banner" role="alert">
             <AlertCircle size={18} />
@@ -120,7 +113,6 @@ const AuthScreen: React.FC<NavigateProps> = ({ navigate: _navigate }) => {
         )}
 
         <form className="auth__form" onSubmit={handleSubmit} noValidate>
-          {/* Email Field */}
           <div className="auth__input-group">
             <label htmlFor="email" className="auth__label">Email Address</label>
             <div className="auth__input-wrapper">
@@ -129,7 +121,7 @@ const AuthScreen: React.FC<NavigateProps> = ({ navigate: _navigate }) => {
                 id="email"
                 type="email"
                 className={`auth__input ${fieldErrors.email ? "auth__input--error" : ""}`}
-                placeholder="juan@halimbawa.com"
+                placeholder="kapitan@barangay.com"
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); clearFieldError("email"); }}
                 disabled={isLoading}
@@ -139,7 +131,6 @@ const AuthScreen: React.FC<NavigateProps> = ({ navigate: _navigate }) => {
             {fieldErrors.email && <span className="auth__field-error">{fieldErrors.email}</span>}
           </div>
 
-          {/* Password Field */}
           <div className="auth__input-group">
             <label htmlFor="password" className="auth__label">Password</label>
             <div className="auth__input-wrapper">
@@ -158,7 +149,6 @@ const AuthScreen: React.FC<NavigateProps> = ({ navigate: _navigate }) => {
                 type="button" 
                 className="auth__toggle-password"
                 onClick={() => setShowPassword(!showPassword)}
-                aria-label={showPassword ? "Itago ang password" : "Ipakita ang password"}
                 tabIndex={-1}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -167,7 +157,6 @@ const AuthScreen: React.FC<NavigateProps> = ({ navigate: _navigate }) => {
             {fieldErrors.password && <span className="auth__field-error">{fieldErrors.password}</span>}
           </div>
 
-          {/* Confirm Password (Register Only) */}
           {mode === "register" && (
             <div className="auth__input-group">
               <label htmlFor="confirmPassword" className="auth__label">Kumpirmahin ang Password</label>
@@ -188,7 +177,6 @@ const AuthScreen: React.FC<NavigateProps> = ({ navigate: _navigate }) => {
             </div>
           )}
 
-          {/* Login Extras (Remember Me & Forgot Password) */}
           {mode === "login" && (
             <div className="auth__form-extras">
               <label className="auth__checkbox-label">
@@ -200,35 +188,9 @@ const AuthScreen: React.FC<NavigateProps> = ({ navigate: _navigate }) => {
                 />
                 <span className="auth__checkbox-text">Tandaan ako</span>
               </label>
-              <button type="button" className="auth__forgot-btn">
-                Nakalimutan ang password?
-              </button>
             </div>
           )}
 
-          {/* Role Selector (Register Only) */}
-          {mode === "register" && (
-            <fieldset className="auth__user-type-toggle" disabled={isLoading}>
-              <legend className="auth__label">Uri ng Account</legend>
-              <div className="auth__user-type-options">
-                {(["resident", "captain"] as const).map((role) => (
-                  <label key={role} className={`auth__user-type-label ${userType === role ? "auth__user-type-label--active" : ""}`}>
-                    <input
-                      type="radio"
-                      name="userType"
-                      value={role}
-                      checked={userType === role}
-                      onChange={() => setUserType(role)}
-                      className="auth__sr-only"
-                    />
-                    {role === "resident" ? "Residente" : "Kapitan"}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-          )}
-
-          {/* Submit Button */}
           <button type="submit" className="auth__btn auth__btn--primary" disabled={isLoading}>
             {isLoading ? (
               <Loader2 size={20} className="auth__icon-spin" />
@@ -243,7 +205,7 @@ const AuthScreen: React.FC<NavigateProps> = ({ navigate: _navigate }) => {
 
         <div className="auth__footer">
           <p className="auth__toggle-text">
-            {mode === "login" ? "Wala pang account?" : "May account ka na ba?"}
+            {mode === "login" ? "Walang Captain account?" : "May account ka na ba?"}
           </p>
           <button
             type="button"

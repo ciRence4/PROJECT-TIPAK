@@ -1,14 +1,8 @@
+// src/screens/Submission/SubmissionScreen.tsx
 import React, { useState, useEffect } from "react";
 import {
-  Camera,
-  Shield,
-  RefreshCw,
-  X,
-  CheckCircle,
-  AlertCircle,
-  ImagePlus,
-  MapPin,
-  Loader2
+  Camera, Shield, RefreshCw, X, CheckCircle,
+  AlertCircle, ImagePlus, MapPin, Loader2
 } from "lucide-react";
 import type { NavigateProps } from "../../lib/types";
 import { useNativeCamera } from "../../hooks/useNativeCamera";
@@ -16,7 +10,7 @@ import { api } from "../../lib/api";
 import { useAuth } from "../../hooks/useAuth";
 import "./SubmissionScreen.css";
 
-const MIN_PHOTOS = 1; // <-- Modified to 1 image for fast testing
+const MIN_PHOTOS = 1;
 
 const SubmissionScreen: React.FC<NavigateProps> = ({ navigate }) => {
   const { userId } = useAuth();
@@ -24,17 +18,24 @@ const SubmissionScreen: React.FC<NavigateProps> = ({ navigate }) => {
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
 
+  // Resident form state
+  const [ownerName, setOwnerName] = useState("");
+  const [address, setAddress] = useState("");
+  const [contactNumber, setContactNumber] = useState(""); // 👈 New state
+
   const {
-    fileInputRef,
-    photos,
-    error,
-    openNativeCamera,
-    handleFileChange,
-    removePhoto,
-    resetAll,
+    fileInputRef, photos, error, openNativeCamera,
+    handleFileChange, removePhoto, resetAll,
   } = useNativeCamera();
 
-  const canSubmit = photos.length >= MIN_PHOTOS && location !== null;
+  // Submission is valid if photos exist, GPS is found, and ALL form fields are filled
+  const canSubmit = 
+    photos.length >= MIN_PHOTOS && 
+    location !== null && 
+    ownerName.trim() !== "" && 
+    address.trim() !== "" &&
+    contactNumber.trim() !== ""; // 👈 Added validation
+    
   const remaining = Math.max(0, MIN_PHOTOS - photos.length);
   const isBusy    = isLoading;
   const latestPhoto = photos.length > 0 ? photos[photos.length - 1] : null;
@@ -62,11 +63,13 @@ const SubmissionScreen: React.FC<NavigateProps> = ({ navigate }) => {
   }, []);
 
   const handleProcessSubmit = async (): Promise<void> => {
-    if (isBusy || !canSubmit || !userId) return;
+    if (isBusy || !canSubmit) return;
     setIsLoading(true);
     try {
-      const analysisResult = await api.analyzeImages(photos, location);
-      await api.saveAssessment(userId, analysisResult);
+      // 👈 Pass the contact number to the API
+      const analysisResult = await api.analyzeImages(photos, location, ownerName, address, contactNumber);
+      
+      await api.saveAssessment(userId || "anonymous-resident", analysisResult);
       navigate("/result", { state: { analysisData: analysisResult, location } });
     } catch (err) {
       console.error("Submission error:", err);
@@ -85,6 +88,10 @@ const SubmissionScreen: React.FC<NavigateProps> = ({ navigate }) => {
           <img src="/src/assets/tipak.png" alt="Tipak Logo" />
           <div className="sub__logo-text">Project Tipak</div>
         </div>
+        <button className="sub__captain-login-btn" onClick={() => navigate("/auth")}>
+          <Shield size={14} />
+          <span>Captain Login</span>
+        </button>
       </header>
 
       <main className="sub__body">
@@ -93,9 +100,45 @@ const SubmissionScreen: React.FC<NavigateProps> = ({ navigate }) => {
         </h1>
 
         <p className="sub__subtext">
-          Kumuha ng {MIN_PHOTOS} larawan ng iyong tahanan para sa libreng AI
-          structural assessment.
+          Punan ang iyong detalye at kumuha ng {MIN_PHOTOS} larawan ng iyong tahanan para sa libreng AI structural assessment.
         </p>
+        
+        {/* Resident Form Input */}
+        <div className="sub__resident-form">
+          <div className="sub__input-group">
+            <label>Pangalan</label>
+            <input 
+              type="text" 
+              placeholder="Hal: Juan Dela Cruz" 
+              value={ownerName} 
+              onChange={(e) => setOwnerName(e.target.value)}
+              disabled={isBusy}
+            />
+          </div>
+          
+          {/* 👈 New Contact Number Input */}
+          <div className="sub__input-group">
+            <label>Contact Number</label>
+            <input 
+              type="tel" 
+              placeholder="Hal: 09123456789" 
+              value={contactNumber} 
+              onChange={(e) => setContactNumber(e.target.value)}
+              disabled={isBusy}
+            />
+          </div>
+
+          <div className="sub__input-group">
+            <label>Kumpletong Tirahan</label>
+            <input 
+              type="text" 
+              placeholder="Hal: 123 Rizal St., Brgy. 654" 
+              value={address} 
+              onChange={(e) => setAddress(e.target.value)}
+              disabled={isBusy}
+            />
+          </div>
+        </div>
 
         <div 
           className="sub__location-indicator" 
@@ -119,10 +162,7 @@ const SubmissionScreen: React.FC<NavigateProps> = ({ navigate }) => {
           )}
         </div>
 
-        <div
-          className="sub__progress"
-          aria-label={`${photos.length} ng ${MIN_PHOTOS} larawan`}
-        >
+        <div className="sub__progress" aria-label={`${photos.length} ng ${MIN_PHOTOS} larawan`}>
           {Array.from({ length: MIN_PHOTOS }).map((_, i) => (
             <span
               key={i}
@@ -138,6 +178,8 @@ const SubmissionScreen: React.FC<NavigateProps> = ({ navigate }) => {
               </>
             ) : photos.length >= MIN_PHOTOS && !location ? (
               "Naghihintay ng GPS lokasyon..."
+            ) : photos.length >= MIN_PHOTOS && (!ownerName || !address || !contactNumber) ? (
+              "Punan ang mga detalye sa itaas"
             ) : (
               `${remaining} larawan pa ang kailangan`
             )}
@@ -174,14 +216,8 @@ const SubmissionScreen: React.FC<NavigateProps> = ({ navigate }) => {
               <span className="sub__corner sub__corner--bl" aria-hidden="true" />
               <span className="sub__corner sub__corner--br" aria-hidden="true" />
 
-              <Camera
-                size={54}
-                strokeWidth={1.2}
-                className="sub__viewfinder-icon"
-              />
-              <span className="sub__viewfinder-label">
-                Pindutin para buksan ang kamera
-              </span>
+              <Camera size={54} strokeWidth={1.2} className="sub__viewfinder-icon" />
+              <span className="sub__viewfinder-label">Pindutin para buksan ang kamera</span>
             </>
           )}
 
