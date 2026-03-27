@@ -29,8 +29,8 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) => {
   const [houses, setHouses] = useState<House[]>([]);
   const [selectedHouse, setSelectedHouse] = useState<House | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [mapStyle, setMapStyle] = useState<MapStyle>("satellite");
-  
+  const [mapStyle, setMapStyle] = useState<MapStyle>("street");
+
   const { logout } = useAuth();
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -76,7 +76,7 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) => {
     // Reposition zoom controls to bottom left so it doesn't conflict with right panel
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    const tileLayer = L.tileLayer(TILE_URLS.satellite, {
+    const tileLayer = L.tileLayer(TILE_URLS.street, {
       maxZoom: 19,
       attribution: "Map data &copy; contributors"
     }).addTo(map);
