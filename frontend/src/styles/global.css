@@ -1,0 +1,61 @@
+/* ─── Google Fonts ─────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,600&family=Sora:wght@300;400;500;600;700&display=swap');
+
+/* ─── Design Tokens ────────────────────────────────────────────── */
+:root {
+  /* Brand palette */
+  --c-cream:     #f0f0f0;
+  --c-sand:      #e0e0e0;
+  --c-amber:     #e9b26e;
+  --c-amber-lt:  #f5cfa0;
+  --c-navy:      #4a7c59;
+  --c-dark:      #030805;
+  --c-surface:   #12212f;
+  --c-border:    rgba(233, 178, 110, 0.10);
+
+  /* Typography */
+  --ff-display: 'Fraunces', Georgia, serif;
+  --ff-body:    'Sora', sans-serif;
+
+  /* Radii */
+  --r-sm:  8px;
+  --r-md:  14px;
+  --r-lg:  22px;
+
+  /* Shadows */
+  --sh-card:     0 2px 16px rgba(14, 26, 39, 0.10);
+  --sh-elevated: 0 8px 40px rgba(14, 26, 39, 0.22);
+  --sh-amber:    0 8px 28px rgba(233, 178, 110, 0.28);
+}
+
+/* ─── Reset ────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--ff-body);
+  background: var(--c-cream);
+  color: var(--c-dark);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Shared Keyframes ─────────────────────────────────────────── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse-dot {
+  0%,  100% { opacity: 1;   transform: scale(1); }
+  50%        { opacity: 0.4; transform: scale(0.80); }
+}
