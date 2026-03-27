@@ -75,8 +75,6 @@ export const api = {
   getHouses: async (): Promise<House[]> => {
     try {
       const response = await apiClient.get("/houses");
-      
-      // Ensure we are working with an array
       const rawData = Array.isArray(response.data) ? response.data : [];
 
       return rawData.map((r: any) => ({
@@ -84,20 +82,20 @@ export const api = {
         lat: r.lat,
         lng: r.lng,
         risk: r.risk,
-        // Fallback colors if the backend 'color' field is missing
         color: r.color || (r.risk === 'MATAAS' ? '#EF4444' : r.risk === 'MABABA' ? '#22C55E' : '#F59E0B'),
         owner: r.owner || 'Unknown',
         address: r.address || 'Di nakatala', 
-        materials: 'Tingnan sa buong ulat',
-        details: 'Tingnan sa buong ulat',
-        date: new Date().toLocaleDateString()
+        materials: r.materials || 'Tingnan sa buong ulat',
+        details: r.details || 'Walang naitalang depekto',
+        full_report: r.full_report || 'Walang karagdagang ulat.',
+        date: r.created_at ? new Date(r.created_at).toLocaleDateString('en-PH') : new Date().toLocaleDateString('en-PH')
       }));
     } catch (error) {
       console.error("API Error in getHouses:", error);
-      return []; // Return empty array so the Dashboard doesn't crash
+      return [];
     }
   },
-
+  
   updateHouseRisk: async (_id: number, _updatedData: Partial<House>): Promise<House> => {
     throw new Error("Ang manu-manong pagbabago ng risk level ay hindi pa suportado sa backend.");
   },

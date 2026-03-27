@@ -3,7 +3,7 @@ export type UserRole = "resident" | "captain";
 export type AppPath = "/" | "/submission" | "/result" | "/dashboard" | "/auth";
 
 export interface House {
-  id: number;
+  id: number | string;
   lat: number;
   lng: number;
   risk: RiskLevel;
@@ -13,6 +13,7 @@ export interface House {
   materials: string;
   details: string;
   date: string;
+  full_report?: string;
 }
 
 export interface BoundingBox {
