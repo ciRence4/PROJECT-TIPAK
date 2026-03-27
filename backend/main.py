@@ -323,25 +323,34 @@ def health():
 
 @app.get("/houses")
 def get_houses():
-    res = (
-        supabase.table("assessments")
-        .select("*")
-        .not_.is_("lat", "null")
-        .order("created_at", desc=True)
-        .execute()
-    )
-    return [
-        {
-            "id": r["id"],
-            "lat": r["lat"],
-            "lng": r["lng"],
-            "risk": r["risk_level"],
-            "color": r["color"],
-            "owner": r["resident_name"],
-            "image_url": r.get("image_url"),
-        }
-        for r in res.data
-    ]
+    try:
+        # Fetch data safely without the crashing filter syntax
+        res = (
+            supabase.table("assessments")
+            .select("*")
+            .order("created_at", desc=True)
+            .execute()
+        )
+        
+        # Filter out rows where lat or lng is None directly in Python
+        valid_rows = [r for r in res.data if r.get("lat") is not None and r.get("lng") is not None]
+        
+        return [
+            {
+                "id": r["id"],
+                "lat": r["lat"],
+                "lng": r["lng"],
+                "risk": r["risk_level"],
+                "color": r["color"],
+                "owner": r["resident_name"],
+                "image_url": r.get("image_url"),
+            }
+            for r in valid_rows
+        ]
+    except Exception as e:
+        print(f"Error fetching houses: {e}")
+        # Return a clean 500 error instead of silently crashing
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/assessments/{record_id}/recommendations")
 def get_recommendations(record_id: str):
