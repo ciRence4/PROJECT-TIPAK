@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import { Home, LogOut, MessageSquare } from "lucide-react";
+import { Home, LogOut, MessageSquare, Loader2 } from "lucide-react";
 import StatCard from "../../components/StatCard/StatCard";
 import DetailPanel from "../../components/DetailPanel/DetailPanel";
 import { useLeaflet } from "../../hooks/useLeaflet";
@@ -8,112 +8,120 @@ import { useAuth } from "../../hooks/useAuth";
 import type { House, NavigateProps, LeafletInstance } from "../../lib/types";
 import "./Dashboard.css";
 
-// Define the boundaries of your specific area (Southwest, Northeast)
 const MAP_BOUNDS: [[number, number], [number, number]] = [
-  [14.168288025639274, 121.2378119084683], // Southwest coordinates
-  [14.173738857174708, 121.24183522173293] // Northeast coordinates
+  [14.168288025639274, 121.2378119084683], 
+  [14.173738857174708, 121.24183522173293] 
 ];
 
-const FALLBACK_MAP_CENTER: [number, number] = [14.171013, 121.239823]; // Center of the new bounds
+const FALLBACK_MAP_CENTER: [number, number] = [14.171013, 121.239823];
 const MAP_ZOOM = 16;
 
-const Dashboard: React.FC<NavigateProps> = ({ navigate }) =>{
+const Dashboard: React.FC<NavigateProps> = ({ navigate }) => {
   const [houses, setHouses] = useState<House[]>([]);
   const [selectedHouse, setSelectedHouse] = useState<House | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   
   const { logout } = useAuth();
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef  = useRef<LeafletInstance | null>(null);
 
-  // Fetch real data from the backend database on mount
-  useEffect(() =>{
-    const loadHouses = async () =>{
-      try{
+  useEffect(() => {
+    const loadHouses = async () => {
+      try {
         const data = await api.getHouses();
         setHouses(data || []);
-      } catch (err){
+      } catch (err) {
         console.error("Failed to fetch dashboard data:", err);
         setHouses([]); 
+      } finally {
+        setIsLoading(false);
       }
     };
     loadHouses();
   }, []);
 
-  const handleLogout = () =>{
+  const handleLogout = () => {
     logout();
     navigate("/");
   };
 
-  // Inside src/screens/Dashboard/Dashboard.tsx
-
-  // build the Leaflet map and plot all house markers.
-  const initMap = useCallback((L: LeafletInstance): void =>{
+  const initMap = useCallback((L: LeafletInstance): void => {
     if (!mapContainerRef.current) return;
+    if (mapInstanceRef.current) return;
 
-    if (!mapInstanceRef.current){
-      const map = L.map(mapContainerRef.current, {
-        center: FALLBACK_MAP_CENTER, // Start with fallback
-        zoom: MAP_ZOOM,
-        zoomControl: true,
-        maxBounds: MAP_BOUNDS, // Locks the panning to this specific area
-        maxBoundsViscosity: 1.0, // Makes the bounds completely solid
-        minZoom: 16, // Prevents zooming out past the bounding box
-        inertia: false, // Prevents the kinetic snap-back effect when dragged
-        bounceAtZoomLimits: false, // Disables bouncing at zoom boundaries
-      });
+    const map = L.map(mapContainerRef.current, {
+      center: FALLBACK_MAP_CENTER, 
+      zoom: MAP_ZOOM,
+      zoomControl: true,
+      maxBounds: MAP_BOUNDS, 
+      maxBoundsViscosity: 1.0, 
+      minZoom: 16, 
+      inertia: false, 
+      bounceAtZoomLimits: false, 
+    });
 
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19,
+      attribution: "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
+    }).addTo(map);
 
-        L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-        maxZoom: 19,
-        attribution: "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
-      }).addTo(map);
+    mapInstanceRef.current = map;
 
-      mapInstanceRef.current = map;
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          map.setView([latitude, longitude], MAP_ZOOM);
 
-      // Access user location, center the map, and add a location marker
-      if (navigator.geolocation){
-        navigator.geolocation.getCurrentPosition(
-          (position) =>{
-            const { latitude, longitude } = position.coords;
-            map.setView([latitude, longitude], MAP_ZOOM);
+          L.circleMarker([latitude, longitude], {
+            radius: 18,
+            fillColor: "#3b82f6", 
+            color: "transparent",
+            fillOpacity: 0.2,
+          }).addTo(map);
 
-            // Outer semi-transparent blue pulse
-            L.circleMarker([latitude, longitude], {
-              radius: 18,
-              fillColor: "#3b82f6", // Blue
-              color: "transparent",
-              fillOpacity: 0.2,
-            }).addTo(map);
-
-            // Inner solid blue dot for precise location
-            L.circleMarker([latitude, longitude], {
-              radius: 7,
-              fillColor: "#3b82f6",
-              color: "#ffffff",
-              weight: 2,
-              opacity: 1,
-              fillOpacity: 1,
-            })
-            .addTo(map)
-            .bindTooltip(
-              `<span style="font-family:var(--ff-body);font-size:0.75rem;font-weight:600;color:#0e1a27">
-                 Iyong Lokasyon
-               </span>`,
-              { direction: "top", offset: [0, -8] }
-            );
-          },
-          (err) => console.warn("Hindi makuha ang lokasyon ng dashboard:", err.message),
-          { enableHighAccuracy: true, timeout: 30000, maximumAge: 10000 }
-        );
-      }
+          L.circleMarker([latitude, longitude], {
+            radius: 7,
+            fillColor: "#3b82f6",
+            color: "#ffffff",
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 1,
+          })
+          .addTo(map)
+          .bindTooltip(
+            `<span style="font-family:var(--ff-body);font-size:0.75rem;font-weight:600;color:#0e1a27">
+               Iyong Lokasyon
+             </span>`,
+            { direction: "top", offset: [0, -8] }
+          );
+        },
+        (err) => console.warn("Hindi makuha ang lokasyon ng dashboard:", err.message),
+        { enableHighAccuracy: true, timeout: 30000, maximumAge: 10000 }
+      );
     }
+  }, []);
 
+  useLeaflet(initMap);
+
+  useEffect(() => {
     const map = mapInstanceRef.current;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const L = (window as any).L;
     
+    if (!map || !L) return;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    map.eachLayer((layer: any) => {
+      if (layer instanceof L.CircleMarker && layer.options.fillColor !== "#3b82f6") {
+        map.removeLayer(layer);
+      }
+    });
+
     if (houses.length === 0) return;
 
-    houses.forEach((house) =>{
+    houses.forEach((house) => {
       L.circleMarker([house.lat, house.lng], {
         radius: 20,
         fillColor: house.color,
@@ -142,17 +150,15 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) =>{
         { direction: "top", offset: [0, -14] },
       );
 
-      marker.on("click", () =>{
+      marker.on("click", () => {
         setSelectedHouse(house);
         map.panTo([house.lat, house.lng], { animate: true, duration: 0.5 });
       });
     });
   }, [houses]);
 
-  useLeaflet(initMap);
-
-  useEffect(() =>{
-    return () =>{
+  useEffect(() => {
+    return () => {
       if (mapInstanceRef.current){
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
@@ -160,7 +166,6 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) =>{
     };
   }, []);
 
-  // --- Dynamic calculations based purely on backend database ---
   const totalSubmissions = houses.length;
   const lowRiskCount = houses.filter(h => h.risk === "MABABA" || h.risk === "Low").length;
   const highRiskCount = houses.filter(h => h.risk === "MATAAS" || h.risk === "High").length;
@@ -170,12 +175,11 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) =>{
   return (
     <div className="dash">
       <div className="dash__main">
-        {/* Topbar */}
         <div className="dash__topbar">
           <div>
             <div className="dash__topbar-title">Barangay Risk Map</div>
             <div className="dash__topbar-meta">
-              {currentDate} &bull; {totalSubmissions === 0 ? "Walang data sa database" : `${totalSubmissions} properties plotted`}
+              {currentDate} &bull; {isLoading ? "Waking up server..." : (totalSubmissions === 0 ? "Walang data sa database" : `${totalSubmissions} properties plotted`)}
             </div>
           </div>
 
@@ -204,7 +208,6 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) =>{
           </div>
         </div>
 
-        {/* ── Stat cards driven by backend data ── */}
         <div className="dash__stats">
           <StatCard
             value={lowRiskCount}
@@ -226,14 +229,20 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) =>{
           />
         </div>
 
-        {/* Map + detail panel */}
         <div className="dash__content">
           <div className="dash__map-wrap">
-            {houses.length === 0 && (
-               <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 900, color: 'rgba(255,255,255,0.5)', fontFamily: 'var(--ff-body)' }}>
+            {isLoading && (
+               <div style={{ 
+                 position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', 
+                 zIndex: 900, color: 'var(--c-cream)', fontFamily: 'var(--ff-body)', 
+                 background: 'rgba(14, 26, 39, 0.85)', padding: '12px 20px', 
+                 borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '10px',
+                 boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+               }}>
+                 <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
+                 <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>Waking up server, please wait...</span>
                </div>
             )}
-            {/* Leaflet mount target */}
             <div
               id="tipak-map"
               ref={mapContainerRef}
@@ -241,7 +250,6 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) =>{
             />
           </div>
 
-          {/* Slide-in detail panel */}
           {selectedHouse && (
             <DetailPanel
               house={selectedHouse}

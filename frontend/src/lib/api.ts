@@ -73,22 +73,29 @@ export const api = {
   },
 
   getHouses: async (): Promise<House[]> => {
-    // Fetch live data from the FastAPI /houses endpoint
-    const response = await apiClient.get("/houses");
-    
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return response.data.map((r: any) => ({
-      id: r.id,
-      lat: r.lat,
-      lng: r.lng,
-      risk: r.risk,
-      color: r.color || (r.risk === 'MATAAS' ? '#EF4444' : r.risk === 'MABABA' ? '#22C55E' : '#F59E0B'),
-      owner: r.owner || 'Unknown',
-      address: r.address || 'Di nakatala', 
-      materials: 'Tingnan sa buong ulat',
-      details: 'Tingnan sa buong ulat',
-      date: new Date().toLocaleDateString()
-    }));
+    try {
+      const response = await apiClient.get("/houses");
+      
+      // Ensure we are working with an array
+      const rawData = Array.isArray(response.data) ? response.data : [];
+
+      return rawData.map((r: any) => ({
+        id: r.id,
+        lat: r.lat,
+        lng: r.lng,
+        risk: r.risk,
+        // Fallback colors if the backend 'color' field is missing
+        color: r.color || (r.risk === 'MATAAS' ? '#EF4444' : r.risk === 'MABABA' ? '#22C55E' : '#F59E0B'),
+        owner: r.owner || 'Unknown',
+        address: r.address || 'Di nakatala', 
+        materials: 'Tingnan sa buong ulat',
+        details: 'Tingnan sa buong ulat',
+        date: new Date().toLocaleDateString()
+      }));
+    } catch (error) {
+      console.error("API Error in getHouses:", error);
+      return []; // Return empty array so the Dashboard doesn't crash
+    }
   },
 
   updateHouseRisk: async (_id: number, _updatedData: Partial<House>): Promise<House> => {
