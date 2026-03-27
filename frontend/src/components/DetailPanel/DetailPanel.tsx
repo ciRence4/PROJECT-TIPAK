@@ -4,9 +4,13 @@ import type { DetailPanelProps, RiskLevel } from "../../lib/types";
 
 
 const RISK_CLASS_MAP: Record<RiskLevel, string> = {
-  High:     "detail__risk-badge--high",
+  High: "detail__risk-badge--high",
   Moderate: "detail__risk-badge--moderate",
-  Low:      "detail__risk-badge--low",
+  Low: "detail__risk-badge--low",
+
+  MATAAS: "detail__risk-badge--high",
+  KATAMTAMAN: "detail__risk-badge--moderate",
+  MABABA: "detail__risk-badge--low",
 };
 
 /**
