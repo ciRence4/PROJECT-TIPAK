@@ -16,13 +16,11 @@ import { api } from "../../lib/api";
 import { useAuth } from "../../hooks/useAuth";
 import "./SubmissionScreen.css";
 
-const MIN_PHOTOS = 4;
+const MIN_PHOTOS = 1; // <-- Modified to 1 image for fast testing
 
 const SubmissionScreen: React.FC<NavigateProps> = ({ navigate }) => {
   const { userId } = useAuth();
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  
-  // ─── NEW: Location State ──────────────────────────────────────────────────
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
 
@@ -40,6 +38,7 @@ const SubmissionScreen: React.FC<NavigateProps> = ({ navigate }) => {
   const remaining = Math.max(0, MIN_PHOTOS - photos.length);
   const isBusy    = isLoading;
   const latestPhoto = photos.length > 0 ? photos[photos.length - 1] : null;
+  
   useEffect(() => {
     if (!navigator.geolocation) {
       setLocationError("Hindi suportado ng iyong browser ang geolocation.");
@@ -58,7 +57,7 @@ const SubmissionScreen: React.FC<NavigateProps> = ({ navigate }) => {
         console.warn("Location error:", err.message);
         setLocationError("Hindi makuha ang lokasyon. Pakisuri ang iyong GPS/settings.");
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+      { enableHighAccuracy: true, timeout: 30000, maximumAge: 10000 }
     );
   }, []);
 
@@ -66,7 +65,7 @@ const SubmissionScreen: React.FC<NavigateProps> = ({ navigate }) => {
     if (isBusy || !canSubmit || !userId) return;
     setIsLoading(true);
     try {
-      const analysisResult = await api.analyzeImages(photos);
+      const analysisResult = await api.analyzeImages(photos, location);
       await api.saveAssessment(userId, analysisResult);
       navigate("/result", { state: { analysisData: analysisResult, location } });
     } catch (err) {
@@ -98,7 +97,6 @@ const SubmissionScreen: React.FC<NavigateProps> = ({ navigate }) => {
           structural assessment.
         </p>
 
-        {/* ─── NEW: Location Indicator ────────────────────────────────────── */}
         <div 
           className="sub__location-indicator" 
           style={{ 
@@ -121,7 +119,6 @@ const SubmissionScreen: React.FC<NavigateProps> = ({ navigate }) => {
           )}
         </div>
 
-        {/* Progress dots */}
         <div
           className="sub__progress"
           aria-label={`${photos.length} ng ${MIN_PHOTOS} larawan`}
@@ -147,7 +144,6 @@ const SubmissionScreen: React.FC<NavigateProps> = ({ navigate }) => {
           </span>
         </div>
 
-        {/* Error banner */}
         {error && (
           <div className="sub__alert" role="alert">
             <AlertCircle size={14} strokeWidth={2} />
@@ -155,7 +151,6 @@ const SubmissionScreen: React.FC<NavigateProps> = ({ navigate }) => {
           </div>
         )}
 
-        {/* Viewfinder Area */}
         <div
           className="sub__viewfinder"
           role="img"
@@ -206,7 +201,6 @@ const SubmissionScreen: React.FC<NavigateProps> = ({ navigate }) => {
           style={{ display: "none" }}
         />
 
-        {/* Thumbnail strip */}
         {photos.length > 0 && (
           <div className="sub__thumbnails" aria-label="Mga kuha">
             {photos.map((src, i) => (
@@ -226,7 +220,6 @@ const SubmissionScreen: React.FC<NavigateProps> = ({ navigate }) => {
           </div>
         )}
 
-        {/* Controls */}
         <div className="sub__controls">
           <button
             className="sub__btn sub__btn--icon"
