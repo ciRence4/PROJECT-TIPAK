@@ -74,7 +74,7 @@ const Dashboard: React.FC<NavigateProps> = ({ navigate }) => {
     });
 
     // Reposition zoom controls to bottom left so it doesn't conflict with right panel
-    L.control.zoom({ position: 'bottomleft' }).addTo(map);
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     const tileLayer = L.tileLayer(TILE_URLS.satellite, {
       maxZoom: 19,
